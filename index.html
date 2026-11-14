@@ -664,6 +664,7 @@ function pdfBlobOf(r){ const {jsPDF}=window.jspdf; const pdf=new jsPDF({orientat
 function cloudMeta(r){ return {id:cloudId(r),tanggal_num:dateNum(r),hari:r.hari,tanggal:r.tanggal,jam:r.jam,konsumen:r.konsumen,brand:(BRANDS[r.brand]&&BRANDS[r.brand].full)||r.brand,status:isDone(r)?'selesai':'belum',updated_at:new Date().toISOString()}; }
 async function cloudPush(r,withPdf){
   if(!cloudLogged()) return;
+  if(cloud.autoDel!==false && dateNum(r)<todayNum()) return;   // hari sudah lewat: tidak diunggah
   try{
     const m=cloudMeta(r);
     if(withPdf && r.pdfDataUrl && window.jspdf){
@@ -678,6 +679,25 @@ async function cloudPush(r,withPdf){
     return true;
   }catch(e){ setSaveInd('Cloud gagal: '+String(e.message).slice(0,70)); return false; }
 }
+/* Hapus otomatis: data & PDF di Cloud untuk hari yang sudah lewat (mulai besok setelah hari acara) */
+async function cloudCleanup(){
+  if(!cloudLogged() || cloud.autoDel===false) return 0;
+  try{
+    const t=todayNum();
+    const res=await cloudFetch('/rest/v1/sertifikat?select=id,pdf_path&tanggal_num=lt.'+t);
+    if(!res.ok) return 0;
+    const old=await res.json(); if(!old.length) return 0;
+    const paths=old.map(x=>x.pdf_path).filter(Boolean);
+    if(paths.length){
+      const d=await cloudFetch('/storage/v1/object/pdf',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({prefixes:paths})});
+      if(!d.ok) return 0;     // file gagal dihapus: baris data dibiarkan supaya bisa dicoba lagi
+    }
+    const dr=await cloudFetch('/rest/v1/sertifikat?tanggal_num=lt.'+t,{method:'DELETE',headers:{Prefer:'return=minimal'}});
+    if(dr.ok){ setSaveInd(`Cloud: ${old.length} data hari lewat dihapus`); return old.length; }
+  }catch(e){}
+  return 0;
+}
+setTimeout(()=>{ cloudCleanup(); },4000);
 function closeCloud(){ const d=document.getElementById('cloudDlg'); if(d) d.remove(); }
 function openCloud(){
   closeCloud();
@@ -692,6 +712,7 @@ function openCloud(){
       Anon public key<input id="cl_key" style="${inp}" placeholder="eyJ..." value="${escHtml(cloud.key||'')}">
       Email<input id="cl_mail" type="email" style="${inp}" value="${escHtml(cloud.email||'')}">
       Password<input id="cl_pass" type="password" style="${inp}" autocomplete="current-password">
+      <label style="display:flex;gap:6px;align-items:center;margin:2px 0 10px;cursor:pointer"><input type="checkbox" ${cloud.autoDel!==false?'checked':''} onchange="cloud.autoDel=this.checked;cloudSave()"> Hapus otomatis PDF &amp; data hari yang sudah lewat</label>
       <button class="btn small lime" onclick="cloudLogin()">Login</button> ${logged?'<button class="btn small ghost" onclick="cloudLogout()">Keluar</button>':''}</div>
     </details>
     <div id="cloudMsg" style="font-size:12.5px;font-weight:600;margin-bottom:8px;white-space:pre-wrap"></div>
@@ -713,7 +734,7 @@ async function cloudLogin(){
 }
 function cloudLogout(){ _cloudTok=null; cloud.refresh=''; cloudSave(); openCloud(); }
 async function cloudUploadAll(){
-  const todo=rows.filter(r=>r.generated&&r.pdfDataUrl || r.manualDone);
+  const todo=rows.filter(r=>(r.generated&&r.pdfDataUrl || r.manualDone) && !(cloud.autoDel!==false && dateNum(r)<todayNum()));
   if(!todo.length){ cloudMsg('Belum ada sertifikat selesai untuk diunggah.',true); return; }
   let ok=0;
   for(let i=0;i<todo.length;i++){ cloudMsg(`Mengunggah ${i+1}/${todo.length}…`); if(await cloudPush(todo[i],!!todo[i].pdfDataUrl)) ok++; }
@@ -722,9 +743,10 @@ async function cloudUploadAll(){
 async function cloudLoadList(){
   const box=document.getElementById('cloudList'); if(!box) return; box.textContent='Memuat…';
   try{
+    await cloudCleanup();
     const res=await cloudFetch('/rest/v1/sertifikat?select=*&order=tanggal_num.asc,jam.asc');
     if(!res.ok) throw new Error((await res.text()).slice(0,160));
-    _cloudRows=await res.json();
+    _cloudRows=(await res.json()).filter(x=>cloud.autoDel===false||x.tanggal_num>=todayNum());
     const days=[...new Map(_cloudRows.map(x=>[x.tanggal_num,x])).values()];
     if(!days.length){ box.textContent='Belum ada data di Cloud. Generate sertifikat di PC dulu (atau klik "Unggah semua").'; return; }
     if(!days.some(x=>x.tanggal_num===_cloudDay)){ const up=days.find(x=>x.tanggal_num>=todayNum()); _cloudDay=(up||days[days.length-1]).tanggal_num; }
