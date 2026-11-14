@@ -141,6 +141,15 @@ td.wrap-cell{white-space:normal;max-width:220px}
 .photoTools button:disabled,.photoTools input:disabled{opacity:.4;cursor:not-allowed}
 .zoomRow{display:flex;gap:6px;align-items:center;margin-left:auto}
 @media(max-width:620px){.headline{font-size:24px}.mascotWrap{width:200px;height:210px}.cert{transform:scale(.6);transform-origin:top left;width:1000px}.certStage{height:424px}}
+.dayBar{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;margin-bottom:6px}
+.dayChip{flex:0 0 auto;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);border-radius:12px;padding:8px 12px;cursor:pointer;font-family:inherit;font-size:12.5px;text-align:left;line-height:1.35}
+.dayChip b{display:block;font-size:13px}
+.dayChip small{opacity:.85}
+.dayChip.on{background:var(--lime);color:#0b0f2b;border-color:var(--lime)}
+.dayChip.past{opacity:.6}
+.dayChip.past.on{opacity:1}
+.dayTag{display:inline-block;font-size:10px;font-weight:700;border-radius:6px;padding:1px 5px;margin-left:5px;background:rgba(139,92,246,.35)}
+.dayChip.on .dayTag{background:rgba(11,15,43,.18)}
 </style>
 </head>
 <body>
@@ -157,11 +166,10 @@ td.wrap-cell{white-space:normal;max-width:220px}
   <div class="caption">Byte siap membantumu membuat sertifikat aqiqah hari ini! Tempel data pesertamu, lalu biar Byte yang bantu rapikan semuanya.</div>
   <div class="dataCard">
     <textarea id="dataInput" placeholder="Tempel data sertifikat dari Excel di sini...&#10;Format A (5 kolom): Nomor | Hari & Tanggal | Jam | Konsumen | Grup&#10;Format B (4 kolom): Hari & Tanggal | Jam | Konsumen | Grup&#10;(copy langsung dari Excel, dipisah TAB)"></textarea>
-    <div style="margin-top:12px;text-align:left;font-size:12.5px;opacity:.85">Atau ambil otomatis dari Google Sheet:</div>
+    <div style="margin-top:12px;text-align:left;font-size:12.5px;opacity:.85">Atau ambil otomatis dari Google Sheet (hanya data besok &amp; hari berikutnya):</div>
     <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
-      <input id="sheetUrl" class="sheetUrlInput" type="text" style="flex:1;min-width:0;padding:9px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:#0d1130;color:#fff;font-size:13px;outline:none" placeholder="Link publikasi CSV atau link Apps Script..." onchange="saveSheetUrl(this.value.trim())">
+      <input id="sheetUrl" class="sheetUrlInput" type="text" style="flex:1;min-width:0;padding:9px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:#0d1130;color:#fff;font-size:13px;outline:none" placeholder="Link Google Sheet..." onchange="saveSheetUrl(this.value.trim())">
       <button class="btn small lime" id="sheetBtn" onclick="importSheetWelcome()">Ambil dari Google Sheet</button>
-      <label class="btn small ghost" style="cursor:pointer">Pilih file CSV<input type="file" accept=".csv,text/csv" style="display:none" onchange="importCsvFile(this,'welcome')"></label>
     </div>
     <button class="cta" onclick="startWork()">AYO KITA KERJAKAN SEKARANG →</button>
     <div class="errMsg" id="errMsg"></div>
@@ -190,12 +198,12 @@ td.wrap-cell{white-space:normal;max-width:220px}
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
         <input id="sheetUrl2" class="sheetUrlInput" type="text" style="flex:1;min-width:0;padding:9px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:#0d1130;color:#fff;font-size:13px;outline:none" placeholder="Link Google Sheet..." onchange="saveSheetUrl(this.value.trim())">
         <button class="btn small lime" id="sheetSyncBtn" onclick="syncFromSheet(false)">Sinkron dari Google Sheet</button>
-        <label class="btn small ghost" style="cursor:pointer">Pilih file CSV<input type="file" accept=".csv,text/csv" style="display:none" onchange="importCsvFile(this,'panel')"></label>
         <label style="font-size:12.5px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" onchange="toggleAutoSync(this.checked)"> Sinkron otomatis tiap 5 menit</label>
       </div>
       <div style="display:flex;gap:8px;margin-top:8px"><button class="btn small" onclick="mergeData()">Proses Update</button><button class="btn small ghost" onclick="toggleAddPanel()">Tutup</button><button class="btn small ghost" id="restoreDelBtn" style="display:none" onclick="restoreDeleted()"></button></div>
       <div id="addMsg" style="font-size:12.5px;font-weight:600;margin-top:8px;white-space:pre-wrap;max-height:200px;overflow:auto"></div>
     </div>
+    <div class="dayBar" id="dayBar"></div>
     <div class="searchRow"><input type="search" id="searchInput" placeholder="Cari nama konsumen..." oninput="onSearch(this.value)"><select id="statusFilter" onchange="onFilter()"><option value="all">Semua Status</option><option value="belum">Belum selesai</option><option value="selesai">Sudah selesai</option></select><select id="brandFilter" onchange="onFilter()"><option value="all">Semua Brand</option><option value="MT">Multazam Aqiqah</option><option value="NB">Nabawi Aqiqah</option><option value="BQ">Bank Qurban</option><option value="PN">Peternak Nusantara</option></select><span class="sub" id="searchCount"></span></div>
     <div style="overflow:auto">
     <table>
@@ -324,6 +332,7 @@ let dataProcessed = false;
 let parseErrors = [];
 let searchQ = '';
 let statusFilter = 'all', brandFilter = 'all';
+let selectedDay = null;   // null = belum dipilih, 'all' = semua hari, angka = yyyymmdd
 let deletedKeys = [];
 let currentId = null;
 
@@ -491,6 +500,7 @@ function sheetCsvToTsv(txt){
   const clean = s=>String(s||'').replace(/\s*[\r\n]+\s*/g,' ').replace(/\t/g,' ').trim();
   const isTgl = s=>/^[A-Za-z]+\s*[-–]\s*\d{1,2}\s+[A-Za-z]+\s+\d{2,4}$/.test(s);
   const items=[];
+  const minK=tomorrowNum(); let skipped=0;   // hanya ambil data BESOK dan hari berikutnya
   parseCSV(txt).forEach(c=>{
     c=c.map(clean);
     let tgl,jam,nama,grup;
@@ -503,15 +513,16 @@ function sheetCsvToTsv(txt){
     const t=tgl.match(/^([A-Za-z]+)\s*[-–]\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{2,4})$/);
     const mo=(['jan','feb','mar','apr','mei','jun','jul','agu','sep','okt','nov','des'].indexOf(t[3].toLowerCase().slice(0,3)==='ags'?'agu':t[3].toLowerCase().slice(0,3)))+1;
     const yr=t[4].length<=2 ? 2000+(+t[4]) : +t[4];
-    items.push({tgl,jam:jamN,nama,grup:grup||'',k:yr*10000+mo*100+(+t[2]),j:m?(+m[1])*60+(+m[2]):9999,i:items.length});
+    const kk=yr*10000+mo*100+(+t[2]);
+    if(kk<minK){ skipped++; return; }          // hari ini & yang sudah lewat dianggap selesai: tidak diambil
+    items.push({tgl,jam:jamN,nama,grup:grup||'',k:kk,j:m?(+m[1])*60+(+m[2]):9999,i:items.length});
   });
   items.sort((a,b)=>a.k-b.k||a.j-b.j||a.i-b.i);
-  return {text:items.map((x,n)=>[n+1,x.tgl,x.jam,x.nama,x.grup].join('\t')).join('\n'), count:items.length};
+  return {text:items.map((x,n)=>[n+1,x.tgl,x.jam,x.nama,x.grup].join('\t')).join('\n'), count:items.length, skipped};
 }
 async function fetchSheetTsv(url){
   let tries;
-  if(/script\.google\.com\/macros\//.test(url)){ tries=[String(url).trim()]; }          // Web App Apps Script
-  else if(/\/spreadsheets\/d\/e\//.test(url)){            // link "Publikasikan ke web" (paling andal, mengizinkan CORS)
+  if(/\/spreadsheets\/d\/e\//.test(url)){            // link "Publikasikan ke web" (paling andal, mengizinkan CORS)
     try{
       const U=new URL(String(url).trim()); U.pathname=U.pathname.replace(/pubhtml$/,'pub'); U.searchParams.set('output','csv'); U.hash='';
       tries=[U.toString()];
@@ -532,12 +543,12 @@ async function fetchSheetTsv(url){
       const txt=await res.text();
       if(/^\s*<(!doctype|html)/i.test(txt)) throw new Error('Sheet belum dibagikan publik');
       const r=sheetCsvToTsv(txt);
-      if(r.count) return r;
+      if(r.count || r.skipped) return r;
       last=new Error('Tidak ada baris data yang terbaca (kolom tanggal harus berbentuk "Sab - 14 Nov 26")');
     }catch(e){ last=e; }
   }
   const blocked = !last || /failed to fetch|networkerror|load failed/i.test(last.message||'');
-  if(blocked) throw new Error('Browser menolak pengambilan langsung dari Google (aturan CORS), walau link sudah benar. Ini sering terjadi bila file dibuka langsung dari komputer.\nCara lain: klik "Pilih file CSV" (unduh dulu dari Sheets: File → Unduh → CSV), atau pakai link Apps Script, atau tempel data manual.');
+  if(blocked) throw new Error('Browser memblokir pengambilan langsung dari link biasa (aturan CORS Google).\nSolusi: di Google Sheets pilih File → Bagikan → Publikasikan ke web → pilih tab sheet & format CSV → Publikasikan, lalu tempel link hasilnya (diawali .../spreadsheets/d/e/...) di kolom link ini.');
   throw new Error(last.message+'. Pastikan sheet dibagikan "Siapa saja yang memiliki link" (Viewer) dan perangkat sedang online.');
 }
 async function importSheetWelcome(){
@@ -547,6 +558,7 @@ async function importSheetWelcome(){
   btn.disabled=true; const old=btn.textContent; btn.textContent='Mengambil data…'; setMascot('thinking');
   try{
     const r=await fetchSheetTsv(document.getElementById('sheetUrl').value.trim());
+    if(!r.count) throw new Error(`Tidak ada data untuk besok dan hari berikutnya di Sheet (${r.skipped} baris hari ini/lewat diabaikan).`);
     document.getElementById('dataInput').value=r.text;
     scheduleSave(); startWork();
   }catch(e){ err.textContent=e.message; err.style.display='block'; setMascot(null); }
@@ -559,23 +571,12 @@ async function syncFromSheet(silent){
   out.style.color=''; out.textContent='Mengambil data dari Google Sheet…';
   try{
     const r=await fetchSheetTsv(document.getElementById('sheetUrl2').value.trim());
-    mergeData(r.text, !!silent);
+    if(!r.count){ out.style.color=''; out.textContent=`Tidak ada data untuk besok dan hari berikutnya di Sheet (${r.skipped} baris hari ini/lewat diabaikan). Data di aplikasi tidak diubah.`; }
+    else { mergeData(r.text, true); if(r.skipped) out.textContent += ` (${r.skipped} baris hari ini/lewat tidak diambil)`; }
     scheduleSave();
     if(silent) setSaveInd('Sinkron Sheet ✓ '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}));
   }catch(e){ out.style.color='#ff6b7a'; out.textContent=e.message; }
   if(btn){ btn.disabled=false; }
-}
-function importCsvFile(el,mode){
-  const f=el.files&&el.files[0]; if(!f) return;
-  const rd=new FileReader();
-  rd.onload=()=>{
-    const r=sheetCsvToTsv(String(rd.result||'')); el.value='';
-    const showErr=m=>{ if(mode==='welcome'){ const e=document.getElementById('errMsg'); e.textContent=m; e.style.display='block'; } else { const o=document.getElementById('addMsg'); o.style.color='#ff6b7a'; o.textContent=m; } };
-    if(!r.count){ showErr('File CSV tidak berisi baris data yang terbaca (kolom tanggal harus berbentuk "Sab - 14 Nov 26").'); return; }
-    if(mode==='welcome'){ document.getElementById('errMsg').style.display='none'; document.getElementById('dataInput').value=r.text; scheduleSave(); startWork(); }
-    else { mergeData(r.text,false); scheduleSave(); }
-  };
-  rd.readAsText(f);
 }
 let _autoSyncT=null;
 function toggleAutoSync(on){ clearInterval(_autoSyncT); _autoSyncT=null; if(on){ syncFromSheet(true); _autoSyncT=setInterval(()=>syncFromSheet(true),300000); } }
@@ -592,6 +593,38 @@ function dateNum(r){
 function jamNum(r){
   const m = String(r.jam).match(/(\d{1,2})[.:](\d{2})/);
   return m ? (+m[1])*60 + (+m[2]) : 9999;
+}
+function todayNum(){ const d=new Date(); return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate(); }
+function tomorrowNum(){ const d=new Date(); d.setDate(d.getDate()+1); return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate(); }
+function isPastDay(r){ return dateNum(r) < todayNum(); }          // hari sudah lewat = dianggap selesai
+function effDone(r){ return isDone(r) || isPastDay(r); }
+function inDay(r){ return selectedDay==='all' || dateNum(r)===selectedDay; }
+function dayOrdinals(){ const c={}; return rows.map(r=>{ const k=dateNum(r); c[k]=(c[k]||0)+1; return c[k]; }); }
+function dayList(){
+  const m=new Map();
+  rows.forEach(r=>{ const k=dateNum(r); if(!m.has(k)) m.set(k,{k,hari:r.hari,tanggal:r.tanggal,total:0,done:0}); const d=m.get(k); d.total++; if(effDone(r)) d.done++; });
+  return [...m.values()].sort((a,b)=>a.k-b.k);
+}
+function ensureDay(){
+  const days=dayList();
+  if(selectedDay==='all' && days.length) return;
+  if(typeof selectedDay==='number' && days.some(d=>d.k===selectedDay)) return;
+  const t=todayNum(), up=days.find(d=>d.k>=t);
+  selectedDay = up ? up.k : (days.length ? days[days.length-1].k : 'all');
+}
+function selectDay(v){ selectedDay = (v==='all') ? 'all' : +v; renderList(); }
+function renderDayBar(){
+  const box=document.getElementById('dayBar'); if(!box) return;
+  const days=dayList(), t=todayNum(), tm=tomorrowNum();
+  const allDone=days.reduce((a,d)=>a+d.done,0), allTot=days.reduce((a,d)=>a+d.total,0);
+  box.innerHTML = days.length ? (
+    `<button type="button" class="dayChip${selectedDay==='all'?' on':''}" onclick="selectDay('all')"><b>Semua hari</b><small>${allDone}/${allTot} selesai</small></button>` +
+    days.map(d=>{
+      const past=d.k<t, tag = d.k===t ? 'Hari ini' : d.k===tm ? 'Besok' : '';
+      const info = past ? '✓ Selesai (sudah lewat)' : (d.done===d.total ? `✓ ${d.done}/${d.total} selesai` : `${d.done}/${d.total} selesai`);
+      return `<button type="button" class="dayChip${selectedDay===d.k?' on':''}${past?' past':''}" onclick="selectDay(${d.k})"><b>${escHtml(d.hari)}, ${escHtml(d.tanggal)}${tag?`<span class="dayTag">${tag}</span>`:''}</b><small>${d.total} konsumen · ${info}</small></button>`;
+    }).join('')
+  ) : '';
 }
 function sortRows(){
   rows.forEach((r,i)=>{ if(r._ord==null) r._ord=i; });
@@ -618,7 +651,7 @@ function mergeData(rawOverride, keepView){
     const k=rowKey(n), hit=pool[k]&&pool[k].shift();
     const di=delPool.indexOf(k);
     if(!hit && di>=0){ delPool.splice(di,1); skipped++; return; }   // sudah pernah dihapus pengguna
-    if(hit){ existed++; hit.no=n.no; }   // hanya sinkron nomor; status, foto, hasil, dan edit tidak diubah
+    if(hit){ existed++; }   // data lama tidak diubah sama sekali (status, foto, hasil, nomor, edit); hanya data baru ditambahkan
     else { rows.push(n); added++; }
   });
   sortRows();
@@ -644,14 +677,17 @@ function renderList(){
   const q = searchQ.trim().toLowerCase();
   const sf=document.getElementById('statusFilter'), bf=document.getElementById('brandFilter');
   if(sf) sf.value=statusFilter; if(bf) bf.value=brandFilter; updateRestoreBtn();
+  ensureDay(); renderDayBar();
+  const dn=dayOrdinals();
   const vis = rows.map((r,i)=>({r,i})).filter(({r})=>
+    inDay(r) &&
     (!q || String(r.konsumen).toLowerCase().includes(q) || String(r.konsumenAsli||'').toLowerCase().includes(q)) &&
     (statusFilter==='all' || (statusFilter==='selesai' ? isDone(r) : !isDone(r))) &&
     (brandFilter==='all' || r.brand===brandFilter));
   const filtering = !!q || statusFilter!=='all' || brandFilter!=='all';
   const sc = document.getElementById('searchCount');
-  if(sc) sc.textContent = filtering ? `${vis.length} dari ${rows.length}` : '';
-  body.innerHTML = (filtering && !vis.length ? '<tr><td colspan="7" style="text-align:center;opacity:.7;padding:18px">Tidak ada data yang cocok</td></tr>' : '') + vis.map(({r,i})=>{
+  if(sc) sc.textContent = filtering ? `${vis.length} dari ${rows.filter(inDay).length}` : '';
+  body.innerHTML = (!vis.length ? '<tr><td colspan="7" style="text-align:center;opacity:.7;padding:18px">Tidak ada data yang cocok</td></tr>' : '') + vis.map(({r,i})=>{
     const st = isDone(r) ? 'selesai' : (r.photo ? 'foto' : 'belum');
     const cls = st==='selesai' ? 'b-ok' : (st==='foto' ? 'b-foto' : 'b-belum');
     const status = `<select class="badge ${cls} statusSel" title="Klik untuk ubah status manual" onchange="setStatus(${i},this.value)">
@@ -660,7 +696,7 @@ function renderList(){
       <option value="selesai" ${st==='selesai'?'selected':''}>${r.generated?'Selesai':'Selesai (manual)'}</option>
     </select>`;
     return `<tr data-i="${i}">
-      <td>${r.no}</td><td>${r.hari}, ${r.tanggal}</td><td>${r.jam}</td>
+      <td>${dn[i]}</td><td>${r.hari}, ${r.tanggal}</td><td>${r.jam}</td>
       <td class="wrap-cell">${r.konsumen}${r.namaTotal>1?`<span class="nameTag">Nama ${r.namaKe}/${r.namaTotal}</span>`:''}</td>
       <td><select class="brandSel" title="Ubah brand" onchange="changeBrand(${i},this.value)">${Object.keys(BRANDS).map(k=>`<option value="${k}" ${k===r.brand?'selected':''}>${BRANDS[k].full}</option>`).join('')}</select>
         <div class="avDD">
@@ -677,9 +713,10 @@ function renderList(){
       </td>
     </tr>`;
   }).join('');
-  const done = rows.filter(isDone).length;
-  document.getElementById('progressTxt').textContent = `${done} / ${rows.length} selesai`;
-  document.getElementById('exportBtn').disabled = !(rows.length && done===rows.length);
+  const scope = rows.filter(inDay);
+  const done = scope.filter(effDone).length;
+  document.getElementById('progressTxt').textContent = `${done} / ${scope.length} selesai`;
+  document.getElementById('exportBtn').disabled = !(scope.length && done===scope.length);
   scheduleSave();
 }
 let activeIdx=null, pdrag=null;
@@ -990,19 +1027,23 @@ function exportReport(){
   const pdf = new jsPDF({unit:'pt',format:'a4'});
   pdf.setFontSize(14); pdf.text('Laporan Sertifikat Aqiqah', 40, 40);
   pdf.setFontSize(10);
+  if(selectedDay!=='all'){ const rr=rows.find(inDay); if(rr) pdf.text(`${rr.hari}, ${rr.tanggal}`,40,56); }
   let y=70;
   pdf.text('No', 40,y); pdf.text('Hari/Tanggal',70,y); pdf.text('Konsumen',220,y); pdf.text('Brand',400,y); pdf.text('Status',480,y);
   y+=14; pdf.line(40,y,560,y); y+=14;
-  rows.forEach(r=>{
+  const dnx=dayOrdinals();
+  rows.forEach((r,ri)=>{
+    if(!inDay(r)) return;
     if(y>780){ pdf.addPage(); y=50; }
-    pdf.text(String(r.no),40,y);
+    pdf.text(String(dnx[ri]),40,y);
     pdf.text(`${r.hari}, ${r.tanggal}`,70,y);
     pdf.text(String(r.konsumen).slice(0,28),220,y);
     pdf.text(BRANDS[r.brand].full,400,y);
-    pdf.text(isDone(r)?'Selesai':'Belum',480,y);
+    pdf.text(effDone(r)?'Selesai':'Belum',480,y);
     y+=16;
   });
-  safeSavePdf(pdf,'Laporan_Sertifikat_Aqiqah.pdf');
+  const _rr = selectedDay!=='all' ? rows.find(inDay) : null;
+  safeSavePdf(pdf, _rr ? `Laporan_Sertifikat_Aqiqah_${(_rr.hari+'_'+_rr.tanggal).replace(/\s+/g,'_')}.pdf` : 'Laporan_Sertifikat_Aqiqah.pdf');
   showDoneDialog();
 }
 // Simpan PDF lewat link download (blob) supaya halaman aplikasi tidak pernah berpindah/blank.
@@ -1086,7 +1127,7 @@ async function saveNow(){
       if(nf) rows[activeIdx].nameText=nf.innerHTML;
       if(inf) rows[activeIdx].infoText=inf.innerHTML;
     }
-    await idbPut('state',{v:1,rows,dataProcessed,currentId,deletedKeys,input:input?input.value:'',search:searchQ,savedAt:Date.now()});
+    await idbPut('state',{v:1,rows,dataProcessed,currentId,deletedKeys,day:selectedDay,input:input?input.value:'',search:searchQ,savedAt:Date.now()});
     if(dataProcessed && rows.length && currentId){
       await idbPut('h:'+currentId,{rows,deletedKeys});
       const idx=(await idbGet('hist_index'))||[];
@@ -1107,7 +1148,7 @@ async function restoreState(){
     const input=document.getElementById('dataInput');
     if(st.input) input.value=st.input;
     if(st.dataProcessed && Array.isArray(st.rows) && st.rows.length){
-      rows=st.rows; dataProcessed=true; searchQ=st.search||''; currentId=st.currentId||('h'+Date.now()); deletedKeys=st.deletedKeys||[];
+      rows=st.rows; dataProcessed=true; searchQ=st.search||''; currentId=st.currentId||('h'+Date.now()); deletedKeys=st.deletedKeys||[]; if(st.day!=null) selectedDay=st.day;
       const si=document.getElementById('searchInput'); if(si) si.value=searchQ;
       document.getElementById('screenWelcome').classList.remove('active');
       document.getElementById('screenApp').classList.add('active');
@@ -1129,7 +1170,7 @@ async function resetAll(skipConfirm){
   clearTimeout(_saveT); _restoring=true;
   try{ await idbDel('state'); }catch(e){}
   try{ closeModal(); }catch(e){}
-  rows=[]; deletedKeys=[]; statusFilter='all'; brandFilter='all'; dataProcessed=false; currentId=null; searchQ=''; parseErrors=[]; activeIdx=null; pdrag=null;
+  rows=[]; deletedKeys=[]; selectedDay=null; statusFilter='all'; brandFilter='all'; dataProcessed=false; currentId=null; searchQ=''; parseErrors=[]; activeIdx=null; pdrag=null;
   const pi=document.getElementById('photoInput'); if(pi) pi.value='';
   setMascot(null);
   document.getElementById('dataInput').value='';
@@ -1257,6 +1298,7 @@ async function renderHistory(){
   </div>`).join('');
 }
 async function openHistory(id){
+  selectedDay=null;
   try{
     const h=await idbGet('h:'+id);
     if(!h||!h.rows||!h.rows.length) return;
