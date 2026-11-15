@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Poppins:wght@400;600;700&family=Montserrat:ital,wght@0,500;0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --navy:#0b0f2b; --navy2:#121640; --blue:#2F6FED; --blue-glow:#4e8dff;
@@ -150,6 +151,68 @@ td.wrap-cell{white-space:normal;max-width:220px}
 .dayChip.past.on{opacity:1}
 .dayTag{display:inline-block;font-size:10px;font-weight:700;border-radius:6px;padding:1px 5px;margin-left:5px;background:rgba(139,92,246,.35)}
 .dayChip.on .dayTag{background:rgba(11,15,43,.18)}
+
+/* ===== THEME: Collaboo-style (biru royal + pastel + monster) ===== */
+:root{--navy:#f2f4f8;--navy2:#e6eefb;--blue:#1f4fa8;--blue-glow:#1f4fa8;--purple:#c9a7e0;--lime:#d4f03c;--ink:#0f2a5e;--sub:#5b74a6;--line:#d5e3f7;--panel:#fff;--pale:#b8d9f8;--pink:#ff4fa3;--teal:#2fbfa5;--sun:#ffd23f;color-scheme:light}
+body{background:#f2f4f8;color:var(--ink);font-family:Ubuntu,Poppins,sans-serif}
+h1,h2,.title-font,.at,.cta,.headline{font-family:Ubuntu,sans-serif!important}
+.doodle{opacity:.9;filter:none}
+.doodle:nth-of-type(1){background:var(--pink)!important;width:70px!important;height:70px!important;border-radius:50% 50% 50% 12%!important}
+.doodle:nth-of-type(2){background:var(--sun)!important;width:60px!important;height:60px!important;border-radius:30% 70% 60% 40%!important}
+.doodle:nth-of-type(3){background:var(--teal)!important;width:80px!important;height:80px!important;bottom:6%!important;border-radius:45% 55% 40% 60%!important}
+#screenWelcome::before{content:"";position:absolute;left:-25%;right:-25%;top:440px;bottom:0;background:var(--blue);border-radius:50% 50% 0 0/110px 110px 0 0;z-index:-1}
+#screenWelcome{padding-top:20px}
+.headline{background:none!important;-webkit-text-fill-color:var(--blue);color:var(--blue)!important;font-weight:700;font-size:32px}
+.subhead{color:var(--ink)}.caption{color:var(--sub);margin-bottom:34px}
+.mascotWrap img,.mascotBadge img,.appbar img{filter:drop-shadow(0 6px 14px rgba(31,79,168,.35))}
+.dataCard{background:#fff;border:none;border-radius:28px;box-shadow:0 14px 40px rgba(5,20,70,.35)}
+.dataCard textarea,#addInput,.sheetUrlInput,.searchRow input{background:#eaf2fd!important;color:var(--ink)!important;border:2px solid var(--pale)!important;border-radius:16px!important}
+.dataCard textarea:focus,.searchRow input:focus{outline:none;border-color:var(--blue)!important}
+.cta{background:var(--sun);color:#0f2a5e;border-radius:999px;box-shadow:0 6px 0 #d9a900;transition:transform .12s,box-shadow .12s}
+.cta:active{transform:translateY(5px);box-shadow:0 1px 0 #d9a900}
+.btn{background:var(--blue);color:#fff;border-radius:999px;transition:transform .12s}
+.btn:active:not(:disabled){transform:scale(.92)}
+.btn.ghost{background:#eaf2fd;border:none;color:var(--blue)}
+.btn.lime{background:var(--sun);color:#0f2a5e}
+.histItem,.card{background:#fff;border:none;border-radius:26px;box-shadow:0 8px 26px rgba(31,79,168,.12)}
+.histItem{border-radius:18px;color:var(--ink)}
+.histBox .histTitle{color:#cfe2ff}
+.appbar{background:var(--blue);border-radius:999px;padding:8px 16px 8px 10px;color:#fff;position:sticky;top:8px;z-index:20;box-shadow:0 8px 24px rgba(31,79,168,.35)}
+.appbar .btn.ghost{background:rgba(255,255,255,.18);color:#fff}.saveInd{color:#cfe2ff}
+.card>div:first-child{background:var(--blue);color:#fff;border-radius:18px;padding:12px 18px;margin-bottom:12px!important;display:inline-block}
+.card .sub#progressTxt,#progressTxt{color:var(--pale)}
+th{color:var(--blue)}tr:hover td{background:#f1f7ff}th,td{border-bottom:1px solid var(--line)}
+.b-belum{background:var(--pink);color:#fff}.b-foto{background:var(--sun)}.b-ok{background:var(--teal);color:#fff}
+.dayChip{background:#eaf2fd;color:var(--blue);border:none;border-radius:999px;transition:transform .12s}.dayChip:active{transform:scale(.93)}
+.dayChip.on{background:var(--blue);color:#fff}.dayTag{background:var(--pale);color:var(--blue)}.dayChip.on .dayTag{background:rgba(255,255,255,.25)}
+.avBtn,.brandSel,.searchRow select,.statusSel{background:#eaf2fd!important;color:var(--ink)!important;border:1px solid var(--pale)!important}
+.avMenu{background:#fff!important;border:1px solid var(--pale)!important;box-shadow:0 10px 30px rgba(31,79,168,.25)}
+.avOpt{color:var(--ink)}.avOpt:hover{background:#eaf2fd}.avOpt.on{background:var(--pale)}
+select option{background:#fff!important;color:var(--ink)!important}
+.statusSel.b-ok,.statusSel.b-belum{color:#fff!important}
+.overlay{background:rgba(15,42,94,.6)}.modal{background:#f2f4f8;border-radius:28px;border:none}
+.certStage{background:#dbe8fb}.photoTools{background:#fff;border-color:var(--line)}.photoTools .btn.pm.active{background:var(--blue);color:#fff}
+.toolbar .hint,.photoTools .lbl{color:var(--sub)}
+.export-fab{left:50%;right:auto;transform:translateX(-50%);background:var(--blue);padding:8px 10px;border-radius:999px;box-shadow:0 10px 30px rgba(31,79,168,.45)}
+.export-fab .btn{background:var(--sun);color:#0f2a5e}
+.footer{color:var(--sub);border-color:var(--line)}
+#doneDlg>div{background:#fff!important;color:var(--ink)!important;border:none!important;border-radius:28px!important;animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
+#doneDlg input{background:#eaf2fd!important;color:var(--ink)!important;border:2px solid var(--pale)!important}
+#cloudDlg>div{background:var(--blue)!important;border:none!important;border-radius:28px!important}
+#cloudDlg .btn.ghost{background:rgba(255,255,255,.18);color:#fff}
+/* ===== EFEK INTERAKSI ===== */
+@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+#fxToastBox{position:fixed;left:0;right:0;bottom:calc(88px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:10000;pointer-events:none;padding:0 14px}
+.fxToast{display:flex;align-items:center;gap:10px;background:var(--blue);color:#fff;border-radius:999px;padding:10px 20px 10px 10px;font-weight:700;font-size:14.5px;box-shadow:0 12px 34px rgba(31,79,168,.5);animation:toastIn .5s cubic-bezier(.2,1.7,.4,1);max-width:100%}
+.fxToast.out{animation:toastOut .3s forwards}
+.fxToast .em{width:38px;height:38px;border-radius:50%;background:var(--sun);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0;animation:wob .7s .2s 2}
+.fxToast.err{background:#d6336c}
+@keyframes toastIn{0%{transform:translateY(40px) scale(.6);opacity:0}100%{transform:none;opacity:1}}
+@keyframes toastOut{to{transform:translateY(20px) scale(.8);opacity:0}}
+@keyframes wob{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
+.fxP{position:fixed;z-index:10001;pointer-events:none;border-radius:50%;animation:fxFly var(--d,900ms) cubic-bezier(.1,.7,.3,1) forwards}
+@keyframes fxFly{0%{transform:translate(0,0) scale(1) rotate(0);opacity:1}100%{transform:translate(var(--x),var(--y)) scale(.3) rotate(var(--r));opacity:0}}
+@media(prefers-reduced-motion:reduce){.fxP{display:none}.fxToast,.fxToast .em,#doneDlg>div{animation:none}}
 </style>
 </head>
 <body>
@@ -1473,6 +1536,61 @@ window.addEventListener('pagehide',saveNow);
 window.addEventListener('beforeunload',saveNow);
 document.querySelectorAll('.sheetUrlInput').forEach(el=>el.value=getSheetUrl());
 restoreState();
+
+/* ===== EFEK INTERAKSI & NOTIFIKASI ===== */
+(function(){
+  const COLORS=['#ff4fa3','#ffd23f','#2fbfa5','#4e8dff','#c9a7e0','#d4f03c'];
+  const box=document.createElement('div'); box.id='fxToastBox'; document.body.appendChild(box);
+  let last='',lastT=0;
+  window.burst=function(x,y,n,spread){
+    n=n||14; spread=spread||110;
+    for(let i=0;i<n;i++){
+      const e=document.createElement('i'); e.className='fxP';
+      const sz=6+Math.random()*7, a=Math.random()*Math.PI*2, dist=spread*(.4+Math.random()*.8);
+      e.style.cssText=`left:${x}px;top:${y}px;width:${sz}px;height:${sz*(Math.random()>.5?1:.5)}px;background:${COLORS[i%COLORS.length]};--x:${Math.cos(a)*dist}px;--y:${Math.sin(a)*dist+40}px;--r:${Math.random()*720-360}deg;--d:${700+Math.random()*500}ms`;
+      document.body.appendChild(e); setTimeout(()=>e.remove(),1300);
+    }
+  };
+  window.confettiBig=function(){
+    const w=innerWidth;
+    [.2,.5,.8].forEach((f,k)=>setTimeout(()=>burst(w*f,innerHeight*.45,30,220),k*140));
+  };
+  window.toast=function(msg,emoji,opt){
+    opt=opt||{}; const now=Date.now();
+    if(msg===last && now-lastT<900) return; last=msg; lastT=now;
+    const t=document.createElement('div'); t.className='fxToast'+(opt.err?' err':'');
+    t.innerHTML=`<span class="em">${emoji||'✨'}</span><span>${msg}</span>`;
+    box.appendChild(t);
+    while(box.children.length>3) box.firstChild.remove();
+    if(!opt.err){ const r=t.getBoundingClientRect(); burst(r.left+30,r.top+20,opt.big?20:10,opt.big?150:80); }
+    if(opt.big) confettiBig();
+    try{ setMascot&&setMascot('happy'); setTimeout(()=>setMascot(null),1100);}catch(e){}
+    setTimeout(()=>{ t.classList.add('out'); setTimeout(()=>t.remove(),320); }, opt.ms||3200);
+  };
+  // percikan di setiap klik tombol / chip / menu
+  document.addEventListener('click',e=>{
+    const el=e.target.closest&&e.target.closest('button,.btn,.dayChip,.avOpt,.histItem,summary');
+    if(el && !el.disabled) burst(e.clientX,e.clientY,7,50);
+  },true);
+  const wrap=(name,fn)=>{ const o=window[name]; if(typeof o!=='function') return; window[name]=function(){ return fn(o,this,arguments); }; };
+  const nm=()=>{ const r=rows[activeIdx]; return r?String(r.konsumen).split('\n')[0]:''; };
+
+  wrap('loadPhotoFile',(o,t,a)=>{ const after=a[2]; return o.call(t,a[0],a[1],function(i){ if(after) after(i); toast('Mantaaappp! Potonya sudah berhasil di-upload!','📸',{big:true}); }); });
+  wrap('setPhotoSrc',(o,t,a)=>{ const r=o.apply(t,a); toast('Mantaaappp! Potonya sudah berhasil dipasang!','📸',{big:true}); return r; });
+  wrap('doGenerate',async(o,t,a)=>{ await o.apply(t,a); const n=nm(); toast(`Yeay! Sertifikat ${n} berhasil dibuat!`,'🎉',{big:true,ms:4200}); });
+  wrap('downloadPdf',(o,t,a)=>{ const r=o.apply(t,a); toast('PDF sedang diunduh, cek folder Download ya!','📥'); return r; });
+  wrap('startWork',(o,t,a)=>{ const r=o.apply(t,a); setTimeout(()=>{ if(window.dataProcessed) toast(`Hore! ${rows.length} sertifikat siap dikerjakan!`,'🚀',{big:true,ms:4200}); },700); return r; });
+  wrap('mergeData',(o,t,a)=>{ const b=rows.length; const r=o.apply(t,a); const d=rows.length-b;
+    toast(d>0?`Data diperbarui! ${d} sertifikat baru masuk.`:'Data sudah dicek, semuanya paling baru!',d>0?'🎊':'👍',{big:d>0}); return r; });
+  wrap('setStatus',(o,t,a)=>{ const r=o.apply(t,a); toast('Status sertifikat sudah diubah!','✅'); return r; });
+  wrap('changeBrand',(o,t,a)=>{ const r=o.apply(t,a); toast('Brand berhasil diganti!','🎨'); return r; });
+  wrap('changeAvatar',(o,t,a)=>{ const r=o.apply(t,a); toast('Jenis sertifikat berhasil diganti!','✨'); return r; });
+  wrap('autoFitPhoto',(o,t,a)=>{ const r=o.apply(t,a); toast('Foto sudah dirapikan!','🪄'); return r; });
+  wrap('showDoneDialog',(o,t,a)=>{ const r=o.apply(t,a); confettiBig(); return r; });
+  wrap('cloudUploadAll',async(o,t,a)=>{ await o.apply(t,a); toast('Sertifikat terkirim ke Cloud!','☁️',{big:true}); });
+  wrap('resetAll',(o,t,a)=>{ const r=o.apply(t,a); return r; });
+  wrap('closeModal',(o,t,a)=>{ const r=o.apply(t,a); toast('Perubahan tersimpan otomatis!','💾',{ms:2200}); return r; });
+})();
 </script>
 </body>
 </html>
