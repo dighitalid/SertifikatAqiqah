@@ -226,6 +226,11 @@ select option{background:var(--panel)!important;color:var(--ink)!important}
 :root[data-theme=dark] .logoTop,:root[data-theme=dark] .footer img{background:#fff}
 :root[data-theme=dark] .caption,:root[data-theme=dark] .subhead{color:var(--ink)}
 :root[data-theme=dark] .caption{color:var(--sub)}
+.brightRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.brightRow .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--sub)}
+.brightRow input[type=range]{flex:1;min-width:140px;max-width:320px}
+.brightRow .val{font-size:12px;min-width:44px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.brightRow .hdTag{margin-left:auto;font-size:11px;color:var(--sub)}
 #themeBtn{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;width:46px;height:46px;border-radius:50%;border:none;cursor:pointer;font-size:22px;background:var(--sun);box-shadow:0 8px 22px rgba(31,79,168,.4);transition:transform .2s}
 #themeBtn:active{transform:rotate(30deg) scale(.88)}
 </style>
@@ -328,6 +333,15 @@ select option{background:var(--panel)!important;color:var(--ink)!important}
       <button class="btn small ghost" onclick="photoNudge(0,-1)" title="Geser atas">↑</button>
       <button class="btn small ghost" onclick="photoNudge(0,1)" title="Geser bawah">↓</button>
       <button class="btn small ghost" onclick="photoNudge(1,0)" title="Geser kanan">→</button>
+    </div>
+    <div class="brightRow" id="brightRow">
+      <span class="lbl">☀️ KECERAHAN FOTO</span>
+      <button class="btn small ghost" onclick="setBright(getBright()-10)" title="Lebih redup">−</button>
+      <input type="range" id="brightRange" min="40" max="180" step="5" value="100" oninput="setBright(this.value)" aria-label="Kecerahan layar">
+      <button class="btn small ghost" onclick="setBright(getBright()+10)" title="Lebih terang">+</button>
+      <span class="val" id="brightVal">100%</span>
+      <button class="btn small ghost" onclick="setBright(100)">Reset</button>
+      <span class="hdTag">Hanya foto yang diupload · ikut ke PDF · Output HD 6250×4419 px</span>
     </div>
     <div class="certStage"><div class="cert" id="certEl"></div></div>
     <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="onPhotoChosen(event)">
@@ -545,7 +559,7 @@ function buildRows(raw){
     const {hari,tanggal} = parseTanggal(p.tgl);
     const names = splitNames(p.konsumen);
     names.forEach((nm,k)=>{
-      list.push({no:p.no,hari,tanggal,jam:p.jam,konsumen:nm,konsumenAsli:p.konsumen,namaKe:k+1,namaTotal:names.length,grup:p.grup,brand:detectBrand(p.grup),photo:null,photoPos:{x:0,y:0,scale:1},generated:false,pdfDataUrl:null,nameText:nm,infoText:null});
+      list.push({no:p.no,hari,tanggal,jam:p.jam,konsumen:nm,konsumenAsli:p.konsumen,namaKe:k+1,namaTotal:names.length,grup:p.grup,brand:detectBrand(p.grup),photo:null,photoPos:{x:0,y:0,scale:1},generated:false,pdfDataUrl:null,hd:null,nameText:nm,infoText:null});
     });
   });
   return {errors:[], list};
@@ -739,16 +753,15 @@ function cyrb(str){ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<str.length;i+
   h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
   return (4294967296*(2097151&h2)+(h1>>>0)).toString(36); }
 function cloudId(r){ return dateNum(r)+'_'+cyrb(rowKey(r)); }
-function pdfBlobOf(r){ const {jsPDF}=window.jspdf; const pdf=new jsPDF({orientation:'landscape',unit:'px',format:[1000,707]}); pdf.addImage(r.pdfDataUrl,'JPEG',0,0,1000,707); return pdf.output('blob'); }
 function cloudMeta(r){ return {id:cloudId(r),tanggal_num:dateNum(r),hari:r.hari,tanggal:r.tanggal,jam:r.jam,konsumen:r.konsumen,brand:(BRANDS[r.brand]&&BRANDS[r.brand].full)||r.brand,status:isDone(r)?'selesai':'belum',updated_at:new Date().toISOString()}; }
 async function cloudPush(r,withPdf){
   if(!cloudLogged()) return;
   if(cloud.autoDel!==false && dateNum(r)<todayNum()) return;   // hari sudah lewat: tidak diunggah
   try{
     const m=cloudMeta(r);
-    if(withPdf && r.pdfDataUrl && window.jspdf){
+    if(withPdf && hasHd(r) && window.jspdf){
       const path=m.tanggal_num+'/'+m.id+'.pdf';
-      const up=await cloudFetch('/storage/v1/object/pdf/'+path,{method:'POST',headers:{'Content-Type':'application/pdf','x-upsert':'true'},body:pdfBlobOf(r)});
+      const up=await cloudFetch('/storage/v1/object/pdf/'+path,{method:'POST',headers:{'Content-Type':'application/pdf','x-upsert':'true'},body:await pdfBlobOf(r)});
       if(!up.ok) throw new Error('Upload PDF: '+(await up.text()).slice(0,120));
       m.pdf_path=path;
     }
@@ -813,10 +826,10 @@ async function cloudLogin(){
 }
 function cloudLogout(){ _cloudTok=null; cloud.refresh=''; cloudSave(); openCloud(); }
 async function cloudUploadAll(){
-  const todo=rows.filter(r=>(r.generated&&r.pdfDataUrl || r.manualDone) && !(cloud.autoDel!==false && dateNum(r)<todayNum()));
+  const todo=rows.filter(r=>(r.generated&&hasHd(r) || r.manualDone) && !(cloud.autoDel!==false && dateNum(r)<todayNum()));
   if(!todo.length){ cloudMsg('Belum ada sertifikat selesai untuk diunggah.',true); return; }
   let ok=0;
-  for(let i=0;i<todo.length;i++){ cloudMsg(`Mengunggah ${i+1}/${todo.length}…`); if(await cloudPush(todo[i],!!todo[i].pdfDataUrl)) ok++; }
+  for(let i=0;i<todo.length;i++){ cloudMsg(`Mengunggah ${i+1}/${todo.length}…`); if(await cloudPush(todo[i],hasHd(todo[i]))) ok++; }
   cloudMsg(`✓ ${ok} dari ${todo.length} terunggah.`, ok!==todo.length); cloudLoadList();
 }
 async function cloudLoadList(){
@@ -1096,7 +1109,7 @@ function openModal(i){
   document.getElementById('certEl').innerHTML = certTemplate(r);
   document.getElementById('dlBtn').disabled = !r.generated;
   if(r.photo) setupPhotoDrag(r); else updatePhotoUI(r);
-  bindSync(r);
+  bindSync(r); applyPhotoBright(r); syncBright();
   document.getElementById('overlay').classList.add('show');
   fitCert(); if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>{ if(document.getElementById('f_name')) fitCert(); });
 }
@@ -1135,6 +1148,7 @@ function renderPhoto(r){
   img.style.left = ((s.fw/2 + P.x*s.fw - w/2)/s.fw*100)+'%';
   img.style.top  = ((s.fh/2 + P.y*s.fh - h/2)/s.fh*100)+'%';
   img.style.transform = 'none';
+  applyPhotoBright(r);
   updatePhotoUI(r);
 }
 function updatePhotoUI(r){
@@ -1224,26 +1238,117 @@ function setupPhotoDrag(r){
     };
   });
 }
+/* ---------- HD 6250x4419 px (siap cetak) ---------- */
+const HD_W=6250, HD_H=4419;
+const HD_SCALES=[6.25,4.5,3.2,2.2];   // fallback otomatis jika memori perangkat tidak cukup
+function hasHd(r){ return !!(r && (r.hd || r.pdfDataUrl)); }
+function canvasBlank(c){ try{ const x=c.getContext('2d'); const w=c.width,h=c.height; const pts=[[w>>1,h>>1],[10,10],[w-10,h-10],[w>>2,h>>2]]; for(const [px,py] of pts){ const d=x.getImageData(px,py,1,1).data; if(d[3]!==0 && (d[0]|d[1]|d[2])!==0) return false; } return true; }catch(e){ return false; } }
+function canvasToJpegBuf(c,q){ return new Promise((res,rej)=>c.toBlob(b=>{ if(!b) return rej(new Error('toBlob kosong')); b.arrayBuffer().then(res,rej); },'image/jpeg',q)); }
+async function renderCertHD(node){
+  const r=rows[activeIdx], img=document.getElementById('photoImg'); let orig=null;
+  if(img && r && r.photo && (r.photoBright||100)!==100){
+    orig={src:img.src,filter:img.style.filter};
+    try{ img.style.filter='none'; img.src=await brightenDataUrl(r.photo,r.photoBright); if(img.decode) await img.decode().catch(()=>{}); }catch(e){ img.src=orig.src; orig=null; }
+  }
+  try{ return await renderCertHDCore(node); }
+  finally{ if(orig){ img.src=orig.src; img.style.filter=orig.filter; } }
+}
+async function renderCertHDCore(node){
+  if(document.fonts&&document.fonts.ready){ try{ await document.fonts.ready; }catch(e){} }
+  let lastErr=null;
+  for(const sc of HD_SCALES){
+    let cv=null;
+    try{
+      cv=await html2canvas(node,{scale:sc,useCORS:true,backgroundColor:null,logging:false,imageTimeout:15000,scrollX:0,scrollY:0,
+        onclone:(doc)=>{ const el=doc.getElementById('certEl'); let p=el; while(p&&p.style){ p.style.filter='none'; if(p===el) p.style.transform='none'; p=p.parentElement; } }});
+      if(canvasBlank(cv)) throw new Error('canvas kosong (memori perangkat terbatas)');
+      let out=cv;
+      if(sc===HD_SCALES[0] && (cv.width!==HD_W||cv.height!==HD_H)){   // pastikan tepat 6250x4419
+        out=document.createElement('canvas'); out.width=HD_W; out.height=HD_H;
+        const x=out.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; x.drawImage(cv,0,0,HD_W,HD_H);
+        cv.width=cv.height=1;
+      }
+      const buf=await canvasToJpegBuf(out,0.95);
+      const dims={w:out.width,h:out.height};
+      out.width=out.height=1;
+      return {buf,dims};
+    }catch(e){ lastErr=e; if(cv){ try{cv.width=cv.height=1;}catch(_){} } }
+  }
+  throw lastErr||new Error('Gagal membuat HD');
+}
+async function getHdData(r){
+  if(r.pdfDataUrl) return r.pdfDataUrl;                 // data lama (resolusi lama)
+  const b=await idbGet('hd:'+rowKey(r));
+  return b?new Uint8Array(b):null;
+}
+async function pdfBlobOf(r){
+  const data=await getHdData(r); if(!data) throw new Error('Data HD tidak ditemukan, generate ulang');
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:'landscape',unit:'px',format:[1000,707],compress:true});
+  pdf.addImage(data,'JPEG',0,0,1000,707,undefined,'NONE');
+  return pdf.output('blob');
+}
 async function doGenerate(){
   const r = rows[activeIdx];
+  const btn=document.querySelector('.zoomRow .btn:not(.ghost)'); if(btn){ btn.disabled=true; btn.dataset.t=btn.textContent; btn.textContent='Membuat HD…'; }
   setMascot('working');
-  const node = document.getElementById('certEl');
-  const canvas = await html2canvas(node,{scale:2,useCORS:true});
-  r.pdfDataUrl = canvas.toDataURL('image/jpeg',0.92);
-  r.generated = true;
-  document.getElementById('dlBtn').disabled = false;
-  renderList();
-  cloudPush(r,true);
-  setMascot('happy');
-  setTimeout(()=>setMascot(null), 1200);
+  try{
+    const node = document.getElementById('certEl');
+    const {buf,dims} = await renderCertHD(node);
+    await idbPut('hd:'+rowKey(r), buf);
+    r.pdfDataUrl = null; r.hd = {w:dims.w,h:dims.h};
+    r.generated = true;
+    document.getElementById('dlBtn').disabled = false;
+    renderList();
+    saveNow();
+    cloudPush(r,true);
+    setMascot('happy');
+    setTimeout(()=>setMascot(null), 1200);
+  }catch(e){
+    setMascot(null);
+    appDialog({icon:'⚠️',title:'Generate gagal',text:'Perangkat kehabisan memori saat membuat gambar HD. Tutup tab lain lalu coba lagi, atau gunakan laptop/PC. ('+String(e&&e.message||e).slice(0,80)+')'});
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=btn.dataset.t||'Generate Sertifikat'; }
+  }
 }
-function downloadPdf(){
-  const r = rows[activeIdx]; if(!r.pdfDataUrl) return;
-  const {jsPDF} = window.jspdf;
-  const pdf = new jsPDF({orientation:'landscape',unit:'px',format:[1000,707]});
-  pdf.addImage(r.pdfDataUrl,'JPEG',0,0,1000,707);
-  const fname = `${r.hari}_${r.konsumen}_${BRANDS[r.brand].full}`.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_')+'.pdf';
-  pdf.save(fname);
+async function downloadPdf(){
+  const r = rows[activeIdx]; if(!hasHd(r)) return;
+  try{
+    const blob=await pdfBlobOf(r);
+    const fname = `${r.hari}_${r.konsumen}_${BRANDS[r.brand].full}`.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_')+'.pdf';
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=fname; a.style.display='none'; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },4000);
+  }catch(e){ appDialog({icon:'⚠️',title:'Download PDF gagal',text:String(e&&e.message||e)}); }
+}
+/* ---------- Kecerahan FOTO (hanya foto yang diupload, ikut ke PDF) ---------- */
+function getBright(){ return +(document.getElementById('brightRange').value)||100; }
+function applyPhotoBright(r){ const img=document.getElementById('photoImg'); if(!img) return; const v=(r&&r.photoBright)||100; img.style.filter = v===100?'':`brightness(${v/100})`; }
+function syncBright(){
+  const r=rows[activeIdx]; const v=(r&&r.photoBright)||100;
+  const rg=document.getElementById('brightRange'), lb=document.getElementById('brightVal'), row=document.getElementById('brightRow');
+  if(rg){ rg.value=v; rg.disabled=!(r&&r.photo); } if(lb) lb.textContent=v+'%';
+  if(row) row.querySelectorAll('button').forEach(b=>b.disabled=!(r&&r.photo));
+}
+function setBright(v){
+  const r=rows[activeIdx]; if(!r||!r.photo) return;
+  v=Math.max(40,Math.min(180,Math.round(+v||100)));
+  r.photoBright=v; applyPhotoBright(r); syncBright();
+  if(r.generated){ invalidateGenerated(r); const d=document.getElementById('dlBtn'); if(d) d.disabled=true; renderList(); }
+  scheduleSave();
+}
+function brightenDataUrl(src,pct){
+  return new Promise((res,rej)=>{
+    const im=new Image();
+    im.onload=()=>{ try{
+      const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
+      const x=c.getContext('2d'), k=pct/100;
+      if('filter' in x){ x.filter=`brightness(${k})`; x.drawImage(im,0,0); }
+      else{ x.drawImage(im,0,0); const d=x.getImageData(0,0,c.width,c.height), q=d.data; for(let n=0;n<q.length;n+=4){ q[n]=Math.min(255,q[n]*k); q[n+1]=Math.min(255,q[n+1]*k); q[n+2]=Math.min(255,q[n+2]*k); } x.putImageData(d,0,0); }
+      res(/^data:image\/(png|webp)/.test(src)?c.toDataURL('image/png'):c.toDataURL('image/jpeg',0.95));
+    }catch(e){ rej(e); } };
+    im.onerror=()=>rej(new Error('foto gagal dimuat')); im.src=src;
+  });
 }
 function exportReport(){
   if(!window.jspdf){ appDialog({icon:'⚠️',title:'Library PDF belum termuat',text:'Butuh koneksi internet. Coba lagi setelah online.'}); return; }
@@ -1414,7 +1519,7 @@ function onFilter(){
   renderList();
 }
 // sertifikat yang sudah dibuat jadi tidak berlaku bila brand/nama berubah -> status kembali "belum"
-function invalidateGenerated(r){ r.generated=false; r.pdfDataUrl=null; }
+function invalidateGenerated(r){ r.generated=false; r.pdfDataUrl=null; r.hd=null; try{ idbDel('hd:'+rowKey(r)).catch(()=>{}); }catch(e){} }
 function changeBrand(i,v){
   const r=rows[i]; if(!r||!BRANDS[v]||v===r.brand){ renderList(); return; }
   const apply=()=>{
@@ -1540,6 +1645,7 @@ function deleteHistory(id){
     buttons:[{label:'Batal',cls:'ghost'},{label:'Ya, Hapus',cls:'lime',fn:async()=>{
       try{
         const idx=((await idbGet('hist_index'))||[]).filter(m=>m.id!==id);
+        try{ const old=await idbGet('h:'+id); const live=new Set(rows.map(rowKey)); if(old&&old.rows) for(const rr of old.rows){ const k=rowKey(rr); if(!live.has(k)) await idbDel('hd:'+k); } }catch(e){}
         await idbPut('hist_index',idx); await idbDel('h:'+id);
         if(id===currentId) currentId=null;
       }catch(e){}
@@ -1593,7 +1699,7 @@ restoreState();
 
   wrap('loadPhotoFile',(o,t,a)=>{ const after=a[2]; return o.call(t,a[0],a[1],function(i){ if(after) after(i); toast('Mantaaappp! Potonya sudah berhasil di-upload!','📸',{big:true}); }); });
   wrap('setPhotoSrc',(o,t,a)=>{ const r=o.apply(t,a); toast('Mantaaappp! Potonya sudah berhasil dipasang!','📸',{big:true}); return r; });
-  wrap('doGenerate',async(o,t,a)=>{ await o.apply(t,a); const n=nm(); toast(`Yeay! Sertifikat ${n} berhasil dibuat!`,'🎉',{big:true,ms:4200}); });
+  wrap('doGenerate',async(o,t,a)=>{ await o.apply(t,a); const _r=rows[activeIdx]; if(!_r||!_r.generated) return; const n=nm(); toast(`Yeay! Sertifikat ${n} berhasil dibuat!`,'🎉',{big:true,ms:4200}); });
   wrap('downloadPdf',(o,t,a)=>{ const r=o.apply(t,a); toast('PDF sedang diunduh, cek folder Download ya!','📥'); return r; });
   wrap('startWork',(o,t,a)=>{ const r=o.apply(t,a); setTimeout(()=>{ if(window.dataProcessed) toast(`Hore! ${rows.length} sertifikat siap dikerjakan!`,'🚀',{big:true,ms:4200}); },700); return r; });
   wrap('mergeData',(o,t,a)=>{ const b=rows.length; const r=o.apply(t,a); const d=rows.length-b;
