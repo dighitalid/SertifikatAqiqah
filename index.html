@@ -234,17 +234,20 @@ select option{background:var(--panel)!important;color:var(--ink)!important}
 #themeBtn{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;width:46px;height:46px;border-radius:50%;border:none;cursor:pointer;font-size:22px;background:var(--sun);box-shadow:0 8px 22px rgba(31,79,168,.4);transition:transform .2s}
 #themeBtn:active{transform:rotate(30deg) scale(.88)}
 
-/* ---------- LOADING DOWNLOAD ---------- */
-#dlLoader{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(5,7,25,.82);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding:20px}
+/* ---------- LOADING DOWNLOAD (tema listrik biru) ---------- */
+#dlLoader{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(3,6,20,.85);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);padding:20px}
 #dlLoader.show{display:flex}
-.dlBox{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:26px 28px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.dlSpin{width:56px;height:56px;margin:0 auto 14px;border-radius:50%;border:5px solid rgba(255,255,255,.12);border-top-color:var(--lime);border-right-color:var(--blue-glow);animation:dlspin .9s linear infinite}
-@keyframes dlspin{to{transform:rotate(360deg)}}
-.dlTitle{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:18px;margin-bottom:4px}
-.dlSub{font-size:12.5px;color:var(--sub);line-height:1.5}
-.dlBar{height:6px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:14px}
-.dlBar i{display:block;height:100%;width:40%;border-radius:6px;background:linear-gradient(90deg,var(--blue-glow),var(--lime));animation:dlslide 1.2s ease-in-out infinite}
-@keyframes dlslide{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+.dlBox{background:linear-gradient(180deg,#0c1838,#060b20);border:1px solid rgba(78,141,255,.45);border-radius:20px;padding:26px 26px 22px;width:100%;max-width:360px;text-align:center;box-shadow:0 0 0 1px rgba(47,111,237,.15),0 0 40px rgba(47,111,237,.35),0 20px 60px rgba(0,0,0,.6)}
+.dlBolt{font-size:44px;line-height:1;margin-bottom:10px;filter:drop-shadow(0 0 8px #4e8dff) drop-shadow(0 0 18px #2F6FED);animation:dlFlicker 1.2s ease-in-out infinite}
+@keyframes dlFlicker{0%,100%{opacity:1;transform:scale(1)}15%{opacity:.55}30%{opacity:1;transform:scale(1.08)}45%{opacity:.7}60%{opacity:1}}
+.dlTitle{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:18px;color:#eaf4ff;text-shadow:0 0 10px rgba(78,141,255,.7)}
+.dlSub{font-size:12px;color:#8fb4ff;line-height:1.5;margin-top:2px}
+.dlTrack{position:relative;height:18px;margin-top:16px;border-radius:12px;background:#050a1f;border:1px solid rgba(78,141,255,.5);box-shadow:inset 0 2px 6px rgba(0,0,0,.7);overflow:hidden;animation:dlPulse 1.4s ease-in-out infinite alternate}
+@keyframes dlPulse{from{box-shadow:inset 0 2px 6px rgba(0,0,0,.7),0 0 6px rgba(47,111,237,.3)}to{box-shadow:inset 0 2px 6px rgba(0,0,0,.7),0 0 16px rgba(78,141,255,.7)}}
+.dlFill{position:relative;height:100%;width:0%;border-radius:12px;background:linear-gradient(90deg,#1e40af,#2F6FED 45%,#4e8dff 75%,#bfe6ff);box-shadow:0 0 10px #4e8dff,0 0 24px rgba(78,141,255,.7);transition:width .35s ease-out;overflow:hidden}
+.dlFill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.8),transparent);transform:translateX(-100%);animation:dlShine 1s linear infinite}
+@keyframes dlShine{to{transform:translateX(100%)}}
+.dlPct{margin-top:8px;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:15px;color:#9ddcff;text-shadow:0 0 8px #2F6FED}
 </style>
 </head>
 <body>
@@ -322,10 +325,11 @@ select option{background:var(--panel)!important;color:var(--ink)!important}
 
 <div id="dlLoader" role="status" aria-live="polite">
   <div class="dlBox">
-    <div class="dlSpin"></div>
-    <div class="dlTitle" id="dlTitle">Menyiapkan file…</div>
-    <div class="dlSub" id="dlSub">Mohon tunggu sebentar, jangan tutup halaman.</div>
-    <div class="dlBar"><i></i></div>
+    <div class="dlBolt">⚡</div>
+    <div class="dlTitle" id="dlTitle">Menyiapkan file</div>
+    <div class="dlSub" id="dlSub"></div>
+    <div class="dlTrack"><div class="dlFill" id="dlFill"></div></div>
+    <div class="dlPct" id="dlPct">0%</div>
   </div>
 </div>
 <div class="overlay" id="overlay">
@@ -337,7 +341,7 @@ select option{background:var(--panel)!important;color:var(--ink)!important}
         <button class="btn small ghost" onclick="autoFitPhoto()">Rapikan Foto</button>
         <button class="btn small" onclick="doGenerate()">Generate Sertifikat</button>
         <button class="btn small ghost" id="dlBtn" onclick="downloadPdf()" disabled>Download PDF</button>
-        <button class="btn small ghost" id="dlPngBtn" onclick="downloadPng()" disabled>Download PNG</button>
+        <button class="btn small ghost" id="dlPngBtn" onclick="pngChoose()" disabled>Download PNG</button>
       </div>
     </div>
     <div class="photoTools" id="photoTools">
@@ -1314,9 +1318,13 @@ async function doGenerate(){
   const r = rows[activeIdx];
   const btn=document.querySelector('.zoomRow .btn:not(.ghost)'); if(btn){ btn.disabled=true; btn.dataset.t=btn.textContent; btn.textContent='Membuat HD…'; }
   setMascot('working');
+  await showDlLoader('Membuat sertifikat HD','Merender desain dan foto resolusi tinggi, mohon tunggu…');
+  let err=null;
   try{
+    setDlProgress(25);
     const node = document.getElementById('certEl');
     const {buf,dims} = await renderCertHD(node);
+    setDlProgress(80);
     await idbPut('hd:'+rowKey(r), buf);
     r.pdfDataUrl = null; r.hd = {w:dims.w,h:dims.h};
     r.generated = true;
@@ -1325,25 +1333,36 @@ async function doGenerate(){
     renderList();
     saveNow();
     cloudPush(r,true);
-    setMascot('happy');
-    setTimeout(()=>setMascot(null), 1200);
-  }catch(e){
-    setMascot(null);
-    appDialog({icon:'⚠️',title:'Generate gagal',text:'Perangkat kehabisan memori saat membuat gambar HD. Tutup tab lain lalu coba lagi, atau gunakan laptop/PC. ('+String(e&&e.message||e).slice(0,80)+')'});
-  }finally{
-    if(btn){ btn.disabled=false; btn.textContent=btn.dataset.t||'Generate Sertifikat'; }
-  }
+    setDlProgress(95);
+  }catch(e){ err=e; }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=btn.dataset.t||'Generate Sertifikat'; } }
+  setMascot(err?null:'happy');
+  if(!err) setTimeout(()=>setMascot(null), 1200);
+  await hideDlLoader();
+  if(err) appDialog({icon:'⚠️',title:'Generate gagal',text:'Perangkat kehabisan memori saat membuat gambar HD. Tutup tab lain lalu coba lagi, atau gunakan laptop/PC. ('+String(err&&err.message||err).slice(0,80)+')'});
 }
-function showDlLoader(title,sub){
-  const l=document.getElementById('dlLoader');
-  document.getElementById('dlTitle').textContent=title||'Menyiapkan file…';
-  document.getElementById('dlSub').textContent=sub||'Mohon tunggu sebentar, jangan tutup halaman.';
-  l.classList.add('show');
-  return new Promise(res=>requestAnimationFrame(()=>requestAnimationFrame(res)));   // beri waktu browser menggambar overlay
+let dlStart=0;
+function setDlProgress(p){
+  p=Math.max(0,Math.min(100,p));
+  document.getElementById('dlFill').style.width=p+'%';
+  document.getElementById('dlPct').textContent=Math.round(p)+'%';
 }
-function hideDlLoader(){ document.getElementById('dlLoader').classList.remove('show'); }
-function dlFileName(r,ext){
-  return `${r.hari}_${r.konsumen}_${BRANDS[r.brand].full}`.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_')+'.'+ext;
+async function showDlLoader(title,sub){
+  dlStart=performance.now();
+  document.getElementById('dlTitle').textContent=title;
+  document.getElementById('dlSub').textContent=sub||'';
+  setDlProgress(0);
+  document.getElementById('dlLoader').classList.add('show');
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(r,60))));
+}
+async function hideDlLoader(){
+  setDlProgress(100);
+  const wait=Math.max(0,1200-(performance.now()-dlStart))+400;
+  await new Promise(r=>setTimeout(r,wait));
+  document.getElementById('dlLoader').classList.remove('show');
+}
+function dlBaseName(r){
+  return `${r.hari}_${r.konsumen}_${BRANDS[r.brand].full}`.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
 }
 function saveBlob(blob,fname){
   const url=URL.createObjectURL(blob); const a=document.createElement('a');
@@ -1352,35 +1371,84 @@ function saveBlob(blob,fname){
 }
 async function downloadPdf(){
   const r = rows[activeIdx]; if(!hasHd(r)) return;
-  await showDlLoader('Membuat PDF…','Sedang menyiapkan sertifikat HD untuk diunduh.');
+  await showDlLoader('Membuat PDF','Menyiapkan sertifikat HD ke format PDF…');
+  let err=null;
   try{
+    setDlProgress(35);
     const blob=await pdfBlobOf(r);
-    saveBlob(blob, dlFileName(r,'pdf'));
-  }catch(e){ appDialog({icon:'⚠️',title:'Download PDF gagal',text:String(e&&e.message||e)}); }
-  finally{ hideDlLoader(); }
+    setDlProgress(85);
+    saveBlob(blob, dlBaseName(r)+'.pdf');
+  }catch(e){ err=e; }
+  await hideDlLoader();
+  if(err) appDialog({icon:'⚠️',title:'Download PDF gagal',text:String(err&&err.message||err)});
 }
-async function pngBlobOf(r){
+function pngChoose(){
+  if(!hasHd(rows[activeIdx])) return;
+  appDialog({icon:'🖼️',title:'Pilih ukuran PNG',
+    text:'<b>PNG HD</b>: resolusi penuh (6250×4419 px), untuk cetak.<br><br><b>PNG Biasa</b>: diperkecil otomatis, maksimal 3 MB, untuk dikirim lewat chat.',
+    buttons:[
+      {label:'PNG HD (Resolusi Penuh)',cls:'lime',fn:()=>exportPng('hd')},
+      {label:'PNG Biasa (maks 3 MB)',cls:'',fn:()=>exportPng('std')},
+      {label:'Batal',cls:'ghost'}
+    ]});
+}
+async function decodeHd(r){
   const data=await getHdData(r); if(!data) throw new Error('Data HD tidak ditemukan, generate ulang');
-  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
-  const url=URL.createObjectURL(new Blob([bytes],{type:'image/jpeg'}));
-  try{
-    const im=new Image();
-    await new Promise((res,rej)=>{ im.onload=res; im.onerror=()=>rej(new Error('Gagal membaca gambar HD')); im.src=url; });
-    const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
-    const x=c.getContext('2d'); x.drawImage(im,0,0);
-    const blob=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Gagal membuat PNG')),'image/png'));
-    c.width=c.height=1;
-    return blob;
-  }finally{ URL.revokeObjectURL(url); }
+  const blob = typeof data==='string' ? await (await fetch(data)).blob()
+             : new Blob([data instanceof ArrayBuffer ? data : data.buffer],{type:'image/jpeg'});
+  if(window.createImageBitmap){
+    try{ return await createImageBitmap(blob); }catch(e){ /* coba fallback */ }
+  }
+  const url=URL.createObjectURL(blob);
+  const im=new Image();
+  await new Promise((res,rej)=>{ im.onload=res; im.onerror=()=>rej(new Error('Browser tidak bisa membuka gambar HD (memori mungkin kurang)')); im.src=url; });
+  setTimeout(()=>URL.revokeObjectURL(url),15000);
+  return im;
 }
-async function downloadPng(){
-  const r = rows[activeIdx]; if(!hasHd(r)) return;
-  await showDlLoader('Membuat PNG…','Gambar HD sedang dikonversi ke PNG, ini bisa memakan waktu sebentar.');
+async function pngFromHd(r,mode){
+  const src=await decodeHd(r);
+  const W=src.naturalWidth||src.width, H=src.naturalHeight||src.height;
+  const toPng=c=>new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Gagal membuat PNG')),'image/png'));
   try{
-    const blob=await pngBlobOf(r);
-    saveBlob(blob, dlFileName(r,'png'));
-  }catch(e){ appDialog({icon:'⚠️',title:'Download PNG gagal',text:String(e&&e.message||e)}); }
-  finally{ hideDlLoader(); }
+    setDlProgress(30);
+    if(mode==='hd'){
+      const c=document.createElement('canvas'); c.width=W; c.height=H;
+      c.getContext('2d').drawImage(src,0,0);
+      setDlProgress(75);
+      const blob=await toPng(c); c.width=c.height=1;
+      return blob;
+    }
+    const MAX=3*1024*1024;
+    const widths=[2400,2000,1600,1400,1200,1000,800];
+    let last=null;
+    for(let k=0;k<widths.length;k++){
+      const sc=Math.min(1,widths[k]/W), cw=Math.round(W*sc), ch=Math.round(H*sc);
+      const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+      const x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+      x.drawImage(src,0,0,cw,ch);
+      setDlProgress(30+(k+1)*(50/widths.length));
+      const blob=await toPng(c); c.width=c.height=1;
+      last=blob;
+      if(blob.size<=MAX) return blob;
+    }
+    return last;
+  }finally{ if(src.close) src.close(); }
+}
+async function exportPng(mode){
+  const r = rows[activeIdx]; if(!hasHd(r)) return;
+  const isHd=mode==='hd';
+  await showDlLoader(isHd?'Membuat PNG HD':'Membuat PNG Biasa',
+    isHd?'Resolusi penuh 6250×4419 px, proses bisa agak lama…':'Mengecilkan gambar sampai di bawah 3 MB…');
+  let blob=null, err=null;
+  try{
+    blob=await pngFromHd(r,mode);
+    setDlProgress(92);
+    saveBlob(blob, dlBaseName(r)+(isHd?'_HD.png':'.png'));
+  }catch(e){ err=e; }
+  await hideDlLoader();
+  if(err){ appDialog({icon:'⚠️',title:'Download PNG gagal',text:String(err&&err.message||err)}); return; }
+  const mb=(blob.size/1048576).toFixed(2);
+  toast(`PNG ${isHd?'HD':'biasa'} (${mb} MB) sudah diunduh!`,'🖼️');
 }
 /* ---------- Kecerahan FOTO (hanya foto yang diupload, ikut ke PDF) ---------- */
 function getBright(){ return +(document.getElementById('brightRange').value)||100; }
@@ -1762,7 +1830,6 @@ restoreState();
   wrap('setPhotoSrc',(o,t,a)=>{ const r=o.apply(t,a); toast('Mantaaappp! Potonya sudah berhasil dipasang!','📸',{big:true}); return r; });
   wrap('doGenerate',async(o,t,a)=>{ await o.apply(t,a); const _r=rows[activeIdx]; if(!_r||!_r.generated) return; const n=nm(); toast(`Yeay! Sertifikat ${n} berhasil dibuat!`,'🎉',{big:true,ms:4200}); });
   wrap('downloadPdf',async(o,t,a)=>{ await o.apply(t,a); toast('PDF sudah diunduh, cek folder Download ya!','📥'); });
-  wrap('downloadPng',async(o,t,a)=>{ await o.apply(t,a); toast('PNG sudah diunduh, cek folder Download ya!','🖼️'); });
   wrap('startWork',(o,t,a)=>{ const r=o.apply(t,a); setTimeout(()=>{ if(window.dataProcessed) toast(`Hore! ${rows.length} sertifikat siap dikerjakan!`,'🚀',{big:true,ms:4200}); },700); return r; });
   wrap('mergeData',(o,t,a)=>{ const b=rows.length; const r=o.apply(t,a); const d=rows.length-b;
     toast(d>0?`Data diperbarui! ${d} sertifikat baru masuk.`:'Data sudah dicek, semuanya paling baru!',d>0?'🎊':'👍',{big:d>0}); return r; });
