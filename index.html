@@ -233,6 +233,18 @@ select option{background:var(--panel)!important;color:var(--ink)!important}
 .brightRow .hdTag{margin-left:auto;font-size:11px;color:var(--sub)}
 #themeBtn{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;width:46px;height:46px;border-radius:50%;border:none;cursor:pointer;font-size:22px;background:var(--sun);box-shadow:0 8px 22px rgba(31,79,168,.4);transition:transform .2s}
 #themeBtn:active{transform:rotate(30deg) scale(.88)}
+
+/* ---------- LOADING DOWNLOAD ---------- */
+#dlLoader{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(5,7,25,.82);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding:20px}
+#dlLoader.show{display:flex}
+.dlBox{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:26px 28px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.dlSpin{width:56px;height:56px;margin:0 auto 14px;border-radius:50%;border:5px solid rgba(255,255,255,.12);border-top-color:var(--lime);border-right-color:var(--blue-glow);animation:dlspin .9s linear infinite}
+@keyframes dlspin{to{transform:rotate(360deg)}}
+.dlTitle{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:18px;margin-bottom:4px}
+.dlSub{font-size:12.5px;color:var(--sub);line-height:1.5}
+.dlBar{height:6px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:14px}
+.dlBar i{display:block;height:100%;width:40%;border-radius:6px;background:linear-gradient(90deg,var(--blue-glow),var(--lime));animation:dlslide 1.2s ease-in-out infinite}
+@keyframes dlslide{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
 </style>
 </head>
 <body>
@@ -308,6 +320,14 @@ select option{background:var(--panel)!important;color:var(--ink)!important}
 <button id="themeBtn" title="Ganti mode terang / gelap" aria-label="Ganti mode terang atau gelap">🌙</button>
 <div class="export-fab"><button class="btn lime" id="exportBtn" onclick="exportReport()" disabled>Export Laporan PDF</button></div>
 
+<div id="dlLoader" role="status" aria-live="polite">
+  <div class="dlBox">
+    <div class="dlSpin"></div>
+    <div class="dlTitle" id="dlTitle">Menyiapkan file…</div>
+    <div class="dlSub" id="dlSub">Mohon tunggu sebentar, jangan tutup halaman.</div>
+    <div class="dlBar"><i></i></div>
+  </div>
+</div>
 <div class="overlay" id="overlay">
   <div class="modal">
     <div class="toolbar">
@@ -317,6 +337,7 @@ select option{background:var(--panel)!important;color:var(--ink)!important}
         <button class="btn small ghost" onclick="autoFitPhoto()">Rapikan Foto</button>
         <button class="btn small" onclick="doGenerate()">Generate Sertifikat</button>
         <button class="btn small ghost" id="dlBtn" onclick="downloadPdf()" disabled>Download PDF</button>
+        <button class="btn small ghost" id="dlPngBtn" onclick="downloadPng()" disabled>Download PNG</button>
       </div>
     </div>
     <div class="photoTools" id="photoTools">
@@ -1108,6 +1129,7 @@ function openModal(i){
   activeIdx=i; const r=rows[i];
   document.getElementById('certEl').innerHTML = certTemplate(r);
   document.getElementById('dlBtn').disabled = !r.generated;
+  document.getElementById('dlPngBtn').disabled = !r.generated;
   if(r.photo) setupPhotoDrag(r); else updatePhotoUI(r);
   bindSync(r); applyPhotoBright(r); syncBright();
   document.getElementById('overlay').classList.add('show');
@@ -1299,6 +1321,7 @@ async function doGenerate(){
     r.pdfDataUrl = null; r.hd = {w:dims.w,h:dims.h};
     r.generated = true;
     document.getElementById('dlBtn').disabled = false;
+    document.getElementById('dlPngBtn').disabled = false;
     renderList();
     saveNow();
     cloudPush(r,true);
@@ -1311,15 +1334,53 @@ async function doGenerate(){
     if(btn){ btn.disabled=false; btn.textContent=btn.dataset.t||'Generate Sertifikat'; }
   }
 }
+function showDlLoader(title,sub){
+  const l=document.getElementById('dlLoader');
+  document.getElementById('dlTitle').textContent=title||'Menyiapkan file…';
+  document.getElementById('dlSub').textContent=sub||'Mohon tunggu sebentar, jangan tutup halaman.';
+  l.classList.add('show');
+  return new Promise(res=>requestAnimationFrame(()=>requestAnimationFrame(res)));   // beri waktu browser menggambar overlay
+}
+function hideDlLoader(){ document.getElementById('dlLoader').classList.remove('show'); }
+function dlFileName(r,ext){
+  return `${r.hari}_${r.konsumen}_${BRANDS[r.brand].full}`.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_')+'.'+ext;
+}
+function saveBlob(blob,fname){
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=fname; a.style.display='none'; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },4000);
+}
 async function downloadPdf(){
   const r = rows[activeIdx]; if(!hasHd(r)) return;
+  await showDlLoader('Membuat PDF…','Sedang menyiapkan sertifikat HD untuk diunduh.');
   try{
     const blob=await pdfBlobOf(r);
-    const fname = `${r.hari}_${r.konsumen}_${BRANDS[r.brand].full}`.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_')+'.pdf';
-    const url=URL.createObjectURL(blob); const a=document.createElement('a');
-    a.href=url; a.download=fname; a.style.display='none'; document.body.appendChild(a); a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },4000);
+    saveBlob(blob, dlFileName(r,'pdf'));
   }catch(e){ appDialog({icon:'⚠️',title:'Download PDF gagal',text:String(e&&e.message||e)}); }
+  finally{ hideDlLoader(); }
+}
+async function pngBlobOf(r){
+  const data=await getHdData(r); if(!data) throw new Error('Data HD tidak ditemukan, generate ulang');
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+  const url=URL.createObjectURL(new Blob([bytes],{type:'image/jpeg'}));
+  try{
+    const im=new Image();
+    await new Promise((res,rej)=>{ im.onload=res; im.onerror=()=>rej(new Error('Gagal membaca gambar HD')); im.src=url; });
+    const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
+    const x=c.getContext('2d'); x.drawImage(im,0,0);
+    const blob=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Gagal membuat PNG')),'image/png'));
+    c.width=c.height=1;
+    return blob;
+  }finally{ URL.revokeObjectURL(url); }
+}
+async function downloadPng(){
+  const r = rows[activeIdx]; if(!hasHd(r)) return;
+  await showDlLoader('Membuat PNG…','Gambar HD sedang dikonversi ke PNG, ini bisa memakan waktu sebentar.');
+  try{
+    const blob=await pngBlobOf(r);
+    saveBlob(blob, dlFileName(r,'png'));
+  }catch(e){ appDialog({icon:'⚠️',title:'Download PNG gagal',text:String(e&&e.message||e)}); }
+  finally{ hideDlLoader(); }
 }
 /* ---------- Kecerahan FOTO (hanya foto yang diupload, ikut ke PDF) ---------- */
 function getBright(){ return +(document.getElementById('brightRange').value)||100; }
@@ -1334,7 +1395,7 @@ function setBright(v){
   const r=rows[activeIdx]; if(!r||!r.photo) return;
   v=Math.max(40,Math.min(180,Math.round(+v||100)));
   r.photoBright=v; applyPhotoBright(r); syncBright();
-  if(r.generated){ invalidateGenerated(r); const d=document.getElementById('dlBtn'); if(d) d.disabled=true; renderList(); }
+  if(r.generated){ invalidateGenerated(r); const d=document.getElementById('dlBtn'); if(d) d.disabled=true; const dp=document.getElementById('dlPngBtn'); if(dp) dp.disabled=true; renderList(); }
   scheduleSave();
 }
 function brightenDataUrl(src,pct){
@@ -1700,7 +1761,8 @@ restoreState();
   wrap('loadPhotoFile',(o,t,a)=>{ const after=a[2]; return o.call(t,a[0],a[1],function(i){ if(after) after(i); toast('Mantaaappp! Potonya sudah berhasil di-upload!','📸',{big:true}); }); });
   wrap('setPhotoSrc',(o,t,a)=>{ const r=o.apply(t,a); toast('Mantaaappp! Potonya sudah berhasil dipasang!','📸',{big:true}); return r; });
   wrap('doGenerate',async(o,t,a)=>{ await o.apply(t,a); const _r=rows[activeIdx]; if(!_r||!_r.generated) return; const n=nm(); toast(`Yeay! Sertifikat ${n} berhasil dibuat!`,'🎉',{big:true,ms:4200}); });
-  wrap('downloadPdf',(o,t,a)=>{ const r=o.apply(t,a); toast('PDF sedang diunduh, cek folder Download ya!','📥'); return r; });
+  wrap('downloadPdf',async(o,t,a)=>{ await o.apply(t,a); toast('PDF sudah diunduh, cek folder Download ya!','📥'); });
+  wrap('downloadPng',async(o,t,a)=>{ await o.apply(t,a); toast('PNG sudah diunduh, cek folder Download ya!','🖼️'); });
   wrap('startWork',(o,t,a)=>{ const r=o.apply(t,a); setTimeout(()=>{ if(window.dataProcessed) toast(`Hore! ${rows.length} sertifikat siap dikerjakan!`,'🚀',{big:true,ms:4200}); },700); return r; });
   wrap('mergeData',(o,t,a)=>{ const b=rows.length; const r=o.apply(t,a); const d=rows.length-b;
     toast(d>0?`Data diperbarui! ${d} sertifikat baru masuk.`:'Data sudah dicek, semuanya paling baru!',d>0?'🎊':'👍',{big:d>0}); return r; });
